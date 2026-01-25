@@ -8,6 +8,8 @@ import heroMobileUrl from "../assets/images/heroImageUrlMobile.svg";
 
 import { SidebarProfile } from "../components/layout/SidebarProfile";
 import { HomeNavCards } from "../components/menu/HomeNavCards";
+import { RecommendedRestaurantPage } from "./recommendedrestaurant/RecommendedRestaurant.tsx";
+import { FooterPage } from "./footer/footer.tsx";
 
 export function HomePage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -167,6 +169,15 @@ export function HomePage() {
           <HomeNavCards />
         </div>
       </section>
+
+      <section
+        className="w-full bg-[hsl(var(--background))]"
+        aria-label="Recommended restaurants"
+      >
+        <RecommendedRestaurantPage />
+      </section>
+
+      <FooterPage />
     </div>
   );
 }

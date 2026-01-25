@@ -7,7 +7,8 @@ import { CartPage } from "../pages/cart/CartPage";
 import { CheckoutPage } from "../pages/checkout/CheckoutPage";
 import { OrdersPage } from "../pages/orders/OrdersPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
-import { QuickNavPage } from "../pages/quicknav/QuickNavPage";
+import { QuickNavPage } from "../pages/quicknav/QuickNavPage.tsx";
+import { RecommendedRestaurantPage } from "../pages/recommendedrestaurant/RecommendedRestaurant.tsx";
 
 import { AppLayout } from "../components/layout/AppLayout";
 import { RequireAuth } from "../components/layout/RequireAuth";
@@ -26,6 +27,10 @@ export const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
+        path: ROUTES.bestSeller,
+        element: <RecommendedRestaurantPage />,
+      },
+      {
         element: <AppLayout />,
         children: [
           { path: ROUTES.menu, element: <MenuPage /> },
@@ -37,10 +42,6 @@ export const router = createBrowserRouter([
           {
             path: ROUTES.discount,
             element: <QuickNavPage title="Discount" />,
-          },
-          {
-            path: ROUTES.bestSeller,
-            element: <QuickNavPage title="Best Seller" />,
           },
           {
             path: ROUTES.delivery,
