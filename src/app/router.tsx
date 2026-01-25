@@ -1,10 +1,42 @@
 import { createBrowserRouter } from "react-router-dom";
 
 import { LoginPage } from "../pages/login/LoginPage.tsx";
+import { HomePage } from "../pages/home.tsx";
+import { MenuPage } from "../pages/menu/MenuPage";
+import { CartPage } from "../pages/cart/CartPage";
+import { CheckoutPage } from "../pages/checkout/CheckoutPage";
+import { OrdersPage } from "../pages/orders/OrdersPage";
+import { NotFoundPage } from "../pages/NotFoundPage";
+
+import { AppLayout } from "../components/layout/AppLayout";
+import { RequireAuth } from "../components/layout/RequireAuth";
+import { ROUTES } from "../config/routes";
 
 export const router = createBrowserRouter([
   {
-    path: "/",
+    path: ROUTES.login,
     element: <LoginPage />,
+  },
+  {
+    element: <RequireAuth />,
+    children: [
+      {
+        path: ROUTES.home,
+        element: <HomePage />,
+      },
+      {
+        element: <AppLayout />,
+        children: [
+          { path: ROUTES.menu, element: <MenuPage /> },
+          { path: ROUTES.cart, element: <CartPage /> },
+          { path: ROUTES.checkout, element: <CheckoutPage /> },
+          { path: ROUTES.orders, element: <OrdersPage /> },
+        ],
+      },
+    ],
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />,
   },
 ]);

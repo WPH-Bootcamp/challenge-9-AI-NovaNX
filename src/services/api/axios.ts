@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import { getAuthToken } from "../auth/token";
+
 function normalizeBaseUrl(raw: string | undefined) {
   if (!raw) return "";
 
@@ -21,4 +23,16 @@ export const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+api.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (!token) return config;
+
+  config.headers = config.headers ?? {};
+  if (!config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
 });

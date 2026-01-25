@@ -1,3 +1,8 @@
 export const ROUTES = {
-  login: "/",
+  home: "/",
+  menu: "/menu",
+  cart: "/cart",
+  checkout: "/checkout",
+  orders: "/orders",
+  login: "/login",
 } as const;
