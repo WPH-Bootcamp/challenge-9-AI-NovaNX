@@ -7,6 +7,7 @@ import { CartPage } from "../pages/cart/CartPage";
 import { CheckoutPage } from "../pages/checkout/CheckoutPage";
 import { OrdersPage } from "../pages/orders/OrdersPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
+import { QuickNavPage } from "../pages/quicknav/QuickNavPage";
 
 import { AppLayout } from "../components/layout/AppLayout";
 import { RequireAuth } from "../components/layout/RequireAuth";
@@ -28,6 +29,24 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: ROUTES.menu, element: <MenuPage /> },
+          {
+            path: ROUTES.allRestaurant,
+            element: <QuickNavPage title="All Restaurant" />,
+          },
+          { path: ROUTES.nearby, element: <QuickNavPage title="Nearby" /> },
+          {
+            path: ROUTES.discount,
+            element: <QuickNavPage title="Discount" />,
+          },
+          {
+            path: ROUTES.bestSeller,
+            element: <QuickNavPage title="Best Seller" />,
+          },
+          {
+            path: ROUTES.delivery,
+            element: <QuickNavPage title="Delivery" />,
+          },
+          { path: ROUTES.lunch, element: <QuickNavPage title="Lunch" /> },
           { path: ROUTES.cart, element: <CartPage /> },
           { path: ROUTES.checkout, element: <CheckoutPage /> },
           { path: ROUTES.orders, element: <OrdersPage /> },

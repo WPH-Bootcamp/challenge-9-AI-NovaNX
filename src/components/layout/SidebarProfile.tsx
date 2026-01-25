@@ -78,12 +78,7 @@ export function SidebarProfile({ onClose }: SidebarProfileProps) {
         role="menuitem"
         onClick={onClose}
       >
-        <img
-          src={markerPinUrl}
-          alt=""
-          className="h-5 w-5"
-          aria-hidden="true"
-        />
+        <img src={markerPinUrl} alt="" className="h-5 w-5" aria-hidden="true" />
         <span>Delivery Address</span>
       </button>
 
@@ -119,12 +114,7 @@ export function SidebarProfile({ onClose }: SidebarProfileProps) {
         role="menuitem"
         onClick={logout}
       >
-        <img
-          src={logoutUrl}
-          alt=""
-          className="h-5 w-5"
-          aria-hidden="true"
-        />
+        <img src={logoutUrl} alt="" className="h-5 w-5" aria-hidden="true" />
         <span>Logout</span>
       </button>
     </div>

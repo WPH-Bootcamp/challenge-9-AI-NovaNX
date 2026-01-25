@@ -6,11 +6,10 @@ import profileUrl from "../assets/images/profile1.svg";
 import searchIconUrl from "../assets/images/SearchMobile.svg";
 import heroMobileUrl from "../assets/images/heroImageUrlMobile.svg";
 
-import { useRecommendedRestaurantsQuery } from "./home";
 import { SidebarProfile } from "../components/layout/SidebarProfile";
+import { HomeNavCards } from "../components/menu/HomeNavCards";
 
 export function HomePage() {
-  const recommended = useRecommendedRestaurantsQuery();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -41,7 +40,7 @@ export function HomePage() {
   }, [isProfileOpen]);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[hsl(var(--background))]">
       <section
         className="relative min-h-screen w-full overflow-hidden"
         style={{
@@ -156,15 +155,16 @@ export function HomePage() {
                 Search restaurants, food and drink
               </span>
             </button>
-
-            {recommended.isLoading ? (
-              <div className="mt-4 text-xs text-white/70">Loading hero…</div>
-            ) : recommended.isError ? (
-              <div className="mt-4 text-xs text-white/70">
-                Failed to load hero image.
-              </div>
-            ) : null}
           </div>
+        </div>
+      </section>
+
+      <section
+        className="w-full bg-[hsl(var(--background))]"
+        aria-label="Home navigation"
+      >
+        <div className="mx-auto w-full max-w-[430px] px-4 py-6">
+          <HomeNavCards />
         </div>
       </section>
     </div>

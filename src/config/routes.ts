@@ -5,4 +5,11 @@ export const ROUTES = {
   checkout: "/checkout",
   orders: "/orders",
   login: "/login",
+
+  allRestaurant: "/all-restaurant",
+  nearby: "/nearby",
+  discount: "/discount",
+  bestSeller: "/best-seller",
+  delivery: "/delivery",
+  lunch: "/lunch",
 } as const;
