@@ -26,40 +26,69 @@ const NAV_ITEMS: NavItem[] = [
 
 export function HomeNavCards() {
   return (
-    <nav
-      aria-label="Home navigation"
-      className="grid grid-cols-3 justify-items-center gap-x-3 gap-y-6"
-    >
-      {NAV_ITEMS.map((item) => (
-        <Link
-          key={item.title}
-          to={item.to}
-          className="flex flex-col items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
-        >
-          <div className="flex h-[100px] w-[106px] items-center justify-center rounded-[16px] bg-white p-2 opacity-100 shadow-[0px_0px_20px_0px_#CBCACA40]">
-            <img
-              src={item.iconUrl}
-              alt=""
-              className="h-12 w-12"
-              aria-hidden="true"
-            />
-          </div>
-
-          <div
-            className="text-center"
-            style={{
-              fontFamily: "var(--font-body)",
-              fontWeight: 700,
-              fontSize: "var(--text-text-sm)",
-              lineHeight: "var(--leading-text-sm)",
-              letterSpacing: "-0.02em",
-              color: "var(--Neutral-950, #0A0D12)",
-            }}
+    <nav aria-label="Home navigation">
+      {/* Mobile / default (cards grid) */}
+      <div className="grid grid-cols-3 justify-items-center gap-x-3 gap-y-6 lg:hidden">
+        {NAV_ITEMS.map((item) => (
+          <Link
+            key={item.title}
+            to={item.to}
+            className="flex flex-col items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
           >
-            {item.title}
-          </div>
-        </Link>
-      ))}
+            <div className="flex h-25 w-26.5 items-center justify-center rounded-2xl bg-white p-2 opacity-100 shadow-[0px_0px_20px_0px_#CBCACA40]">
+              <img
+                src={item.iconUrl}
+                alt=""
+                className="h-12 w-12"
+                aria-hidden="true"
+              />
+            </div>
+
+            <div
+              className="text-center"
+              style={{
+                fontFamily: "var(--font-body)",
+                fontWeight: 700,
+                fontSize: "var(--text-text-sm)",
+                lineHeight: "var(--leading-text-sm)",
+                letterSpacing: "-0.02em",
+                color: "var(--Neutral-950, #0A0D12)",
+              }}
+            >
+              {item.title}
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Desktop lg (single row cards like screenshot) */}
+      <div className="hidden grid-cols-6 justify-items-center gap-x-10 py-2 lg:grid xl:gap-x-12">
+        {NAV_ITEMS.map((item) => (
+          <Link
+            key={item.title}
+            to={item.to}
+            className="flex flex-col items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+          >
+            <div className="flex h-25 w-26.5 items-center justify-center rounded-2xl bg-white p-2 opacity-100 shadow-[0px_0px_20px_0px_#CBCACA40]">
+              <img src={item.iconUrl} alt="" className="h-12 w-12" aria-hidden="true" />
+            </div>
+
+            <div
+              className="text-center"
+              style={{
+                fontFamily: "var(--font-body)",
+                fontWeight: 700,
+                fontSize: "var(--text-text-sm)",
+                lineHeight: "var(--leading-text-sm)",
+                letterSpacing: "-0.02em",
+                color: "var(--Neutral-950, #0A0D12)",
+              }}
+            >
+              {item.title}
+            </div>
+          </Link>
+        ))}
+      </div>
     </nav>
   );
 }
