@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 
-import logoUrl from "../../assets/images/LogoMobile.svg";
+import logoMobileUrl from "../../assets/images/LogoMobile.svg";
+import logoUrl from "../../assets/images/Logo.svg";
 import bagUrl from "../../assets/images/Bag.svg";
+import bagBlackMobileUrl from "../../assets/images/BagBlackMobile.svg";
 import profileUrl from "../../assets/images/profile1.svg";
 
 import { SidebarProfile } from "./SidebarProfile";
 
-export function HomeHeader() {
+type HomeHeaderProps = {
+  /** Use the mobile logo only for the Home page hero; other pages should use the main logo. */
+  logoVariant?: "home" | "default";
+};
+
+export function HomeHeader({ logoVariant = "default" }: HomeHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -39,7 +46,11 @@ export function HomeHeader() {
   return (
     <>
       <header className="flex items-center justify-between">
-        <img src={logoUrl} alt="Foody" className="h-10 w-10" />
+        <img
+          src={logoVariant === "home" ? logoMobileUrl : logoUrl}
+          alt="Foody"
+          className="h-10 w-10"
+        />
 
         <div className="flex items-center gap-3">
           <button
@@ -47,7 +58,12 @@ export function HomeHeader() {
             className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
             aria-label="Open cart"
           >
-            <img src={bagUrl} alt="" className="h-7 w-7" aria-hidden />
+            <img
+              src={logoVariant === "home" ? bagUrl : bagBlackMobileUrl}
+              alt=""
+              className="h-7 w-7"
+              aria-hidden
+            />
           </button>
 
           <button

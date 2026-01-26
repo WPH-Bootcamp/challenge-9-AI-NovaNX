@@ -1,5 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
+import logoUrl from "../../assets/images/Logo.svg";
+
 import { Button } from "../../ui/button";
 import { ROUTES } from "../../config/routes";
 import { clearAuthToken, getAuthToken } from "../../services/auth/token";
@@ -33,9 +35,15 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <Link
             to={ROUTES.home}
-            className="text-base font-extrabold tracking-tight text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+            aria-label="Foody"
           >
-            Foody
+            <img
+              src={logoUrl}
+              alt="Foody"
+              className="block h-6 w-auto"
+              loading="eager"
+            />
           </Link>
           <nav
             className="hidden items-center gap-2 sm:flex"
@@ -45,8 +53,8 @@ export function Navbar() {
               to={ROUTES.menu}
               className={({ isActive }) =>
                 isActive
-                  ? "rounded-[var(--radius-sm)] px-3 py-2 text-sm font-semibold text-[hsl(var(--foreground))]"
-                  : "rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
+                  ? "rounded-sm px-3 py-2 text-sm font-semibold text-[hsl(var(--foreground))]"
+                  : "rounded-sm px-3 py-2 text-sm font-medium text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
               }
             >
               Menu
@@ -55,8 +63,8 @@ export function Navbar() {
               to={ROUTES.orders}
               className={({ isActive }) =>
                 isActive
-                  ? "rounded-[var(--radius-sm)] px-3 py-2 text-sm font-semibold text-[hsl(var(--foreground))]"
-                  : "rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
+                  ? "rounded-sm px-3 py-2 text-sm font-semibold text-[hsl(var(--foreground))]"
+                  : "rounded-sm px-3 py-2 text-sm font-medium text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
               }
             >
               History

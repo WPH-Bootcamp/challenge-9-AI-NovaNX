@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { api } from "../services/api/axios";
+import { api } from "../../services/api/axios";
 
 export type Restaurant = {
   id: string;

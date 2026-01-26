@@ -1,10 +1,10 @@
-import searchIconUrl from "../assets/images/SearchMobile.svg";
-import heroMobileUrl from "../assets/images/heroImageUrlMobile.svg";
+import searchIconUrl from "../../assets/images/SearchMobile.svg";
+import heroMobileUrl from "../../assets/images/heroImageUrlMobile.svg";
 
-import { HomeHeader } from "../components/layout/HomeHeader";
-import { HomeNavCards } from "../components/menu/HomeNavCards";
-import { RecommendedRestaurantPage } from "./recommendedrestaurant/RecommendedRestaurant.tsx";
-import { FooterPage } from "./footer/footer.tsx";
+import { HomeHeader } from "../../components/layout/HomeHeader";
+import { HomeNavCards } from "../../components/menu/HomeNavCards";
+import { RecommendedRestaurantPage } from "../recommendedrestaurant/RecommendedRestaurant.tsx";
+import { FooterPage } from "../footer/footer.tsx";
 
 export function HomePage() {
   return (
@@ -20,12 +20,12 @@ export function HomePage() {
       >
         <div className="absolute inset-0 bg-black/55" />
 
-        <div className="relative mx-auto flex min-h-screen w-full max-w-[430px] flex-col px-4 pt-4">
-          <HomeHeader />
+        <div className="relative mx-auto flex min-h-screen w-full max-w-107.5 flex-col px-4 pt-4">
+          <HomeHeader logoVariant="home" />
 
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <h1
-              className="max-w-[340px] font-extrabold tracking-[0] text-center"
+              className="max-w-85 font-extrabold tracking-[0] text-center"
               style={{
                 fontFamily: "var(--font-display)",
                 fontWeight: 800,
@@ -53,7 +53,7 @@ export function HomePage() {
 
             <button
               type="button"
-              className="mt-1 inline-flex h-12 w-[349px] max-w-full items-center gap-[6px] rounded-full bg-white px-4 py-2 opacity-100 shadow-[0px_8px_20px_0px_#00000033]"
+              className="mt-1 inline-flex h-12 w-87.25 max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 opacity-100 shadow-[0px_8px_20px_0px_#00000033]"
               style={{ fontFamily: "var(--font-body)" }}
               aria-label="Search"
             >
@@ -85,7 +85,7 @@ export function HomePage() {
         className="w-full bg-[hsl(var(--background))]"
         aria-label="Home navigation"
       >
-        <div className="mx-auto w-full max-w-[430px] px-4 py-6">
+        <div className="mx-auto w-full max-w-107.5 px-4 py-6">
           <HomeNavCards />
         </div>
       </section>

@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 
 import { LoginPage } from "../pages/login/LoginPage.tsx";
-import { HomePage } from "../pages/home.tsx";
+import { HomePage } from "../pages/home/home.tsx";
 import { MenuPage } from "../pages/menu/MenuPage";
 import { CartPage } from "../pages/cart/CartPage";
 import { CheckoutPage } from "../pages/checkout/CheckoutPage";
