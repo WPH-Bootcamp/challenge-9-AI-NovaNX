@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 
 import starIconUrl from "../../assets/images/material-symbols_star-rounded_Mobile.svg";
 import { HomeHeader } from "../../components/layout/HomeHeader";
 import { getAuthToken } from "../../services/auth/token";
+import { FooterPage } from "../footer/footer.tsx";
 
 import type { UserReview, UserReviewsResult } from "./review";
 
@@ -20,7 +21,8 @@ function asString(value: unknown): string | undefined {
 }
 
 function asNumber(value: unknown): number | undefined {
-  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : undefined;
   if (typeof value === "string") {
     const n = Number(value);
     return Number.isFinite(n) ? n : undefined;
@@ -186,7 +188,8 @@ function mapReviews(payload: unknown): UserReviewsResult {
       typeof averageRating === "number"
         ? averageRating
         : reviews.length
-          ? reviews.reduce((sum, r) => sum + (r.rating ?? 0), 0) / reviews.length
+          ? reviews.reduce((sum, r) => sum + (r.rating ?? 0), 0) /
+            reviews.length
           : undefined,
   };
 }
@@ -215,38 +218,37 @@ function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "U";
   const first = parts[0]?.[0] ?? "U";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
   return `${first}${last}`.toUpperCase();
 }
 
 export function ReviewPage() {
   const params = useParams();
   const restaurantId = params.restaurantId ?? "";
-  const pageKey = restaurantId || "__missing__";
-  const [visibleCountByKey, setVisibleCountByKey] = useState<
-    Record<string, number>
-  >({});
-  const visibleCount = visibleCountByKey[pageKey] ?? 6;
 
-  const reviewUrl = useMemo(() => {
+  const REVIEWS_PAGE_SIZE = 6;
+
+  const reviewBaseUrl = useMemo(() => {
     if (!restaurantId) return "";
-    const base = API_BASE_URL
-      ? `${API_BASE_URL}/api/review/restaurant/${restaurantId}`
-      : `/api/review/restaurant/${restaurantId}`;
-    // Fetch more than we render; we paginate client-side.
-    return `${base}?page=1&limit=100`;
+    const encodedId = encodeURIComponent(restaurantId);
+    return API_BASE_URL
+      ? `${API_BASE_URL}/api/review/restaurant/${encodedId}`
+      : `/api/review/restaurant/${encodedId}`;
   }, [restaurantId]);
 
-  const reviewsQuery = useQuery({
+  const reviewsQuery = useInfiniteQuery({
     queryKey: ["reviews", "restaurant", restaurantId],
     enabled: Boolean(restaurantId),
-    queryFn: async () => {
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
       const token = getAuthToken();
       if (!token) throw new Error("Access token required");
 
-      if (!reviewUrl) throw new Error("Restaurant id required");
+      if (!reviewBaseUrl) throw new Error("Restaurant id required");
 
-      const res = await fetch(reviewUrl, {
+      const url = `${reviewBaseUrl}?page=${pageParam}&limit=${REVIEWS_PAGE_SIZE}`;
+
+      const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
@@ -270,180 +272,194 @@ export function ReviewPage() {
 
       return mapReviews(json);
     },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.reviews.length, 0);
+      if (typeof lastPage.total === "number" && loaded >= lastPage.total)
+        return undefined;
+      if (lastPage.reviews.length < REVIEWS_PAGE_SIZE) return undefined;
+      return allPages.length + 1;
+    },
   });
 
   const visibleReviews = useMemo(() => {
-    return (reviewsQuery.data?.reviews ?? []).slice(0, visibleCount);
-  }, [reviewsQuery.data?.reviews, visibleCount]);
+    return reviewsQuery.data?.pages.flatMap((p) => p.reviews) ?? [];
+  }, [reviewsQuery.data]);
 
-  const totalCount = reviewsQuery.data?.total ?? 0;
-  const avg = reviewsQuery.data?.averageRating;
+  const firstPage = reviewsQuery.data?.pages?.[0];
+  const totalCount = firstPage?.total ?? 0;
+  const avg = firstPage?.averageRating;
 
-  const canShowMore = (reviewsQuery.data?.reviews?.length ?? 0) > visibleCount;
+  const canShowMore = Boolean(reviewsQuery.hasNextPage);
 
   return (
-    <div className="mx-auto w-full max-w-107.5 px-4 py-6">
-      <HomeHeader />
+    <>
+      <div className="mx-auto w-full max-w-107.5 px-4 py-6">
+        <HomeHeader />
 
-      <div className="mt-4">
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontWeight: 800,
-            fontSize: "var(--text-display-xs)",
-            lineHeight: "var(--leading-display-xs)",
-            color: "var(--Neutral-950, #0A0D12)",
-          }}
-        >
-          Review
-        </h1>
-
-        <div className="mt-2 flex items-center gap-2">
-          <img src={starIconUrl} alt="" className="h-5 w-5" aria-hidden />
-          <div
+        <div className="mt-4">
+          <h1
             style={{
-              fontFamily: "var(--font-body)",
-              fontWeight: 700,
-              fontSize: "var(--text-text-sm)",
-              lineHeight: "var(--leading-text-sm)",
-              letterSpacing: "-0.02em",
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: "var(--text-display-xs)",
+              lineHeight: "var(--leading-display-xs)",
               color: "var(--Neutral-950, #0A0D12)",
             }}
           >
-            {typeof avg === "number" ? avg.toFixed(1) : "-"} ({totalCount} Ulasan)
+            Review
+          </h1>
+
+          <div className="mt-2 flex items-center gap-2">
+            <img src={starIconUrl} alt="" className="h-5 w-5" aria-hidden />
+            <div
+              style={{
+                fontFamily: "var(--font-body)",
+                fontWeight: 700,
+                fontSize: "var(--text-text-sm)",
+                lineHeight: "var(--leading-text-sm)",
+                letterSpacing: "-0.02em",
+                color: "var(--Neutral-950, #0A0D12)",
+              }}
+            >
+              {typeof avg === "number" ? avg.toFixed(1) : "-"} ({totalCount}{" "}
+              Ulasan)
+            </div>
           </div>
         </div>
-      </div>
 
-      {reviewsQuery.isLoading ? (
-        <div className="mt-6 text-sm text-[hsl(var(--muted-foreground))]">Loading…</div>
-      ) : reviewsQuery.isError ? (
-        <div className="mt-6 rounded-2xl bg-[hsl(var(--muted))] px-4 py-3 text-sm text-[hsl(var(--muted-foreground))]">
-          {(reviewsQuery.error as Error)?.message ?? "Gagal memuat review"}
-        </div>
-      ) : !restaurantId ? (
-        <div className="mt-6 rounded-2xl bg-[hsl(var(--muted))] px-4 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-          Restaurant id is required.
-        </div>
-      ) : (
-        <div className="mt-4 space-y-4">
-          {visibleReviews.map((r) => {
-            const ratingRounded = Math.max(0, Math.min(5, Math.round(r.rating)));
-            const dateText = formatReviewDate(r.createdAt);
-            return (
-              <div
-                key={r.id}
-                className="rounded-2xl bg-white p-4 shadow-[0px_0px_20px_0px_#CBCACA40]"
-              >
-                <div className="flex gap-3">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
-                    {r.userAvatarUrl ? (
-                      <img
-                        src={r.userAvatarUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        aria-hidden
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div
-                        className="flex h-full w-full items-center justify-center text-sm font-bold text-(--Neutral-950,#0A0D12)"
-                        aria-hidden
-                      >
-                        {initials(r.userName)}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div
-                      className="truncate"
-                      style={{
-                        fontFamily: "var(--font-body)",
-                        fontWeight: 800,
-                        fontSize: "var(--text-text-sm)",
-                        lineHeight: "var(--leading-text-sm)",
-                        color: "var(--Neutral-950, #0A0D12)",
-                      }}
-                    >
-                      {r.userName}
+        {reviewsQuery.isLoading ? (
+          <div className="mt-6 text-sm text-[hsl(var(--muted-foreground))]">
+            Loading…
+          </div>
+        ) : reviewsQuery.isError ? (
+          <div className="mt-6 rounded-2xl bg-[hsl(var(--muted))] px-4 py-3 text-sm text-[hsl(var(--muted-foreground))]">
+            {(reviewsQuery.error as Error)?.message ?? "Gagal memuat review"}
+          </div>
+        ) : !restaurantId ? (
+          <div className="mt-6 rounded-2xl bg-[hsl(var(--muted))] px-4 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
+            Restaurant id is required.
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {visibleReviews.map((r) => {
+              const ratingRounded = Math.max(
+                0,
+                Math.min(5, Math.round(r.rating)),
+              );
+              const dateText = formatReviewDate(r.createdAt);
+              return (
+                <div
+                  key={r.id}
+                  className="rounded-2xl bg-white p-4 shadow-[0px_0px_20px_0px_#CBCACA40]"
+                >
+                  <div className="flex gap-3">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
+                      {r.userAvatarUrl ? (
+                        <img
+                          src={r.userAvatarUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          aria-hidden
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div
+                          className="flex h-full w-full items-center justify-center text-sm font-bold text-(--Neutral-950,#0A0D12)"
+                          aria-hidden
+                        >
+                          {initials(r.userName)}
+                        </div>
+                      )}
                     </div>
 
-                    {dateText ? (
+                    <div className="min-w-0 flex-1">
                       <div
-                        className="mt-1 text-xs"
+                        className="truncate"
                         style={{
                           fontFamily: "var(--font-body)",
-                          fontWeight: 500,
-                          fontSize: "var(--text-text-xs)",
-                          lineHeight: "var(--leading-text-xs)",
-                          letterSpacing: "-0.02em",
-                          color: "hsl(var(--muted-foreground))",
+                          fontWeight: 800,
+                          fontSize: "var(--text-text-sm)",
+                          lineHeight: "var(--leading-text-sm)",
+                          color: "var(--Neutral-950, #0A0D12)",
                         }}
                       >
-                        {dateText}
+                        {r.userName}
                       </div>
-                    ) : null}
 
-                    <div className="mt-2 flex items-center gap-1">
-                      {Array.from({ length: 5 }).map((_, idx) => (
-                        <img
-                          key={`star-${r.id}-${idx}`}
-                          src={starIconUrl}
-                          alt=""
-                          aria-hidden
-                          className={`h-5 w-5 ${idx < ratingRounded ? "opacity-100" : "opacity-30"}`}
-                        />
-                      ))}
-                    </div>
+                      {dateText ? (
+                        <div
+                          className="mt-1 text-xs"
+                          style={{
+                            fontFamily: "var(--font-body)",
+                            fontWeight: 500,
+                            fontSize: "var(--text-text-xs)",
+                            lineHeight: "var(--leading-text-xs)",
+                            letterSpacing: "-0.02em",
+                            color: "hsl(var(--muted-foreground))",
+                          }}
+                        >
+                          {dateText}
+                        </div>
+                      ) : null}
 
-                    <div
-                      className="mt-3 text-sm"
-                      style={{
-                        fontFamily: "var(--font-body)",
-                        fontWeight: 400,
-                        fontSize: "var(--text-text-sm)",
-                        lineHeight: "var(--leading-text-sm)",
-                        letterSpacing: "-0.02em",
-                        color: "var(--Neutral-950, #0A0D12)",
-                      }}
-                    >
-                      {r.comment}
+                      <div className="mt-2 flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <img
+                            key={`star-${r.id}-${idx}`}
+                            src={starIconUrl}
+                            alt=""
+                            aria-hidden
+                            className={`h-5 w-5 ${idx < ratingRounded ? "opacity-100" : "opacity-30"}`}
+                          />
+                        ))}
+                      </div>
+
+                      <div
+                        className="mt-3 text-sm"
+                        style={{
+                          fontFamily: "var(--font-body)",
+                          fontWeight: 400,
+                          fontSize: "var(--text-text-sm)",
+                          lineHeight: "var(--leading-text-sm)",
+                          letterSpacing: "-0.02em",
+                          color: "var(--Neutral-950, #0A0D12)",
+                        }}
+                      >
+                        {r.comment}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {canShowMore ? (
-            <div className="flex justify-center pt-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setVisibleCountByKey((prev) => {
-                    const current = prev[pageKey] ?? 6;
-                    const total = reviewsQuery.data?.reviews.length ?? current;
-                    const next = Math.min(current + 6, total);
-                    return { ...prev, [pageKey]: next };
-                  })
-                }
-                className="h-10 w-40 rounded-[100px] border border-(--Neutral-300,#D5D7DA) bg-transparent px-2 opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
-                style={{
-                  fontFamily: "var(--font-body)",
-                  fontWeight: 700,
-                  fontSize: "var(--text-text-sm)",
-                  lineHeight: "var(--leading-text-sm)",
-                  letterSpacing: "-0.02em",
-                  color: "var(--Neutral-950, #0A0D12)",
-                }}
-              >
-                Show More
-              </button>
-            </div>
-          ) : null}
-        </div>
-      )}
-    </div>
+            {canShowMore ? (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => reviewsQuery.fetchNextPage()}
+                  className="h-10 w-40 rounded-[100px] border border-(--Neutral-300,#D5D7DA) bg-transparent px-2 opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontWeight: 700,
+                    fontSize: "var(--text-text-sm)",
+                    lineHeight: "var(--leading-text-sm)",
+                    letterSpacing: "-0.02em",
+                    color: "var(--Neutral-950, #0A0D12)",
+                  }}
+                  disabled={reviewsQuery.isFetchingNextPage}
+                >
+                  {reviewsQuery.isFetchingNextPage ? "Loading…" : "Show More"}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8 -mx-4 sm:-mx-6">
+        <FooterPage />
+      </div>
+    </>
   );
 }

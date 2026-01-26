@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import backIconUrl from "../../assets/images/arrowCircleBrokenLeftMobile.svg";
 import shareIconUrl from "../../assets/images/ButtonShareMobile.svg";
+import reviewStarIconUrl from "../../assets/images/material-symbols_star-rounded_Mobile.svg";
 import starUrl from "../../assets/images/StarMobile.svg";
 import { HomeHeader } from "../../components/layout/HomeHeader";
 import { useAppDispatch, useAppSelector } from "../../features/hooks";
 import { formatCurrency } from "../../lib/utils";
 import { addToCart, setQuantity } from "../../features/cart/cartSlice";
 import { getAuthToken } from "../../services/auth/token";
+import { FooterPage } from "../footer/footer.tsx";
+
+import type { UserReview, UserReviewsResult } from "../review/review";
 
 import type {
   RestaurantDetail,
@@ -267,11 +271,153 @@ function mapDetail(payload: unknown, id: string): RestaurantDetail {
   return { id, name, star, place, lat, long, imageUrl, images, menus };
 }
 
+function mapUserReview(raw: unknown): UserReview | null {
+  if (!isRecord(raw)) return null;
+
+  const id =
+    asString(raw["id"]) ??
+    asString(raw["_id"]) ??
+    asString(raw["reviewId"]) ??
+    asString(raw["review_id"]);
+  if (!id) return null;
+
+  const rating =
+    asNumber(raw["rating"]) ??
+    asNumber(raw["star"]) ??
+    asNumber(raw["stars"]) ??
+    0;
+
+  const comment =
+    asString(raw["comment"]) ??
+    asString(raw["review"]) ??
+    asString(raw["message"]) ??
+    "";
+
+  const createdAt =
+    asString(raw["createdAt"]) ??
+    asString(raw["created_at"]) ??
+    asString(raw["date"]);
+
+  const userNode =
+    (isRecord(raw["user"]) ? (raw["user"] as Record<string, unknown>) : null) ||
+    (isRecord(raw["author"])
+      ? (raw["author"] as Record<string, unknown>)
+      : null) ||
+    (isRecord(raw["profile"])
+      ? (raw["profile"] as Record<string, unknown>)
+      : null);
+
+  const userName =
+    (userNode &&
+      (asString(userNode["name"]) ||
+        asString(userNode["fullName"]) ||
+        asString(userNode["full_name"]) ||
+        asString(userNode["username"]))) ||
+    asString(raw["userName"]) ||
+    asString(raw["username"]) ||
+    "User";
+
+  const userAvatarUrl = normalizeImageUrl(
+    (userNode &&
+      (asString(userNode["avatarUrl"]) ||
+        asString(userNode["avatar_url"]) ||
+        asString(userNode["avatar"]) ||
+        asString(userNode["photo"]) ||
+        asString(userNode["imageUrl"]) ||
+        asString(userNode["image_url"]))) ||
+      asString(raw["avatarUrl"]) ||
+      asString(raw["avatar_url"]),
+  );
+
+  return {
+    id,
+    userName,
+    userAvatarUrl,
+    rating: Number.isFinite(rating) ? rating : 0,
+    comment,
+    createdAt,
+  };
+}
+
+function mapUserReviews(payload: unknown): UserReviewsResult {
+  const node: Record<string, unknown> = isRecord(payload) ? payload : {};
+  const dataNode: unknown = isRecord(node.data) ? node.data : node;
+
+  const reviewsNode =
+    getNested(dataNode, ["reviews"]) ??
+    getNested(dataNode, ["items"]) ??
+    getNested(dataNode, ["data"]) ??
+    getNested(node, ["data", "reviews"]) ??
+    getNested(node, ["reviews"]) ??
+    dataNode;
+
+  const reviews = extractArray(reviewsNode)
+    .map(mapUserReview)
+    .filter((r): r is UserReview => Boolean(r));
+
+  const total =
+    asNumber(getNested(node, ["data", "total"])) ??
+    asNumber(getNested(node, ["total"])) ??
+    asNumber(getNested(node, ["pagination", "total"])) ??
+    asNumber(getNested(node, ["meta", "total"])) ??
+    asNumber(getNested(node, ["data", "pagination", "total"])) ??
+    undefined;
+
+  const averageRating =
+    asNumber(getNested(node, ["data", "averageRating"])) ??
+    asNumber(getNested(node, ["data", "avgRating"])) ??
+    asNumber(getNested(node, ["averageRating"])) ??
+    asNumber(getNested(node, ["avgRating"])) ??
+    undefined;
+
+  return {
+    reviews,
+    total: total ?? reviews.length,
+    averageRating:
+      typeof averageRating === "number"
+        ? averageRating
+        : reviews.length
+          ? reviews.reduce((sum, r) => sum + (r.rating ?? 0), 0) /
+            reviews.length
+          : undefined,
+  };
+}
+
+function formatReviewDate(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+
+  const date = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(d);
+
+  const time = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
+
+  return `${date}, ${time}`;
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "U";
+  const first = parts[0]?.[0] ?? "U";
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+  return `${first}${last}`.toUpperCase();
+}
+
 export function DetailPage() {
   const navigate = useNavigate();
   const params = useParams();
   const restaurantId = params.id ?? "";
   const userCoords = useUserLocation();
+
+  const REVIEWS_PAGE_SIZE = 6;
 
   const dispatch = useAppDispatch();
   const cartItemsById = useAppSelector((s) => s.cart.itemsById);
@@ -329,6 +475,58 @@ export function DetailPage() {
       }
 
       return mapDetail(json, restaurantId);
+    },
+  });
+
+  const reviewsBaseUrl = useMemo(() => {
+    if (!restaurantId) return "";
+    const encodedId = encodeURIComponent(restaurantId);
+    return API_BASE_URL
+      ? `${API_BASE_URL}/api/review/restaurant/${encodedId}`
+      : `/api/review/restaurant/${encodedId}`;
+  }, [restaurantId]);
+
+  const reviewsQuery = useInfiniteQuery({
+    queryKey: ["reviews", "restaurant", restaurantId],
+    enabled: Boolean(restaurantId),
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const token = getAuthToken();
+      if (!token) throw new Error("Access token required");
+      if (!reviewsBaseUrl) throw new Error("Restaurant id required");
+
+      const url = `${reviewsBaseUrl}?page=${pageParam}&limit=${REVIEWS_PAGE_SIZE}`;
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+
+      const text = await res.text();
+      let json: unknown = null;
+      try {
+        json = text ? (JSON.parse(text) as unknown) : null;
+      } catch {
+        json = null;
+      }
+
+      if (!res.ok) {
+        const message =
+          (isRecord(json) ? asString(json["message"]) : undefined) ||
+          `Request failed (${res.status})`;
+        throw new Error(message);
+      }
+
+      return mapUserReviews(json);
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.reviews.length, 0);
+      if (typeof lastPage.total === "number" && loaded >= lastPage.total)
+        return undefined;
+      if (lastPage.reviews.length < REVIEWS_PAGE_SIZE) return undefined;
+      return allPages.length + 1;
     },
   });
 
@@ -923,7 +1121,197 @@ export function DetailPage() {
             </div>
           ) : null}
         </section>
+
+        <section className="mt-8" aria-label="User reviews">
+          <div className="flex items-center justify-between">
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: "var(--text-text-lg)",
+                lineHeight: "var(--leading-text-lg)",
+                color: "var(--Neutral-950, #0A0D12)",
+              }}
+            >
+              Review
+            </h2>
+          </div>
+
+          {(() => {
+            const firstPage = reviewsQuery.data?.pages?.[0];
+            const avg = firstPage?.averageRating;
+            const total = firstPage?.total ?? 0;
+            const reviewsAll =
+              reviewsQuery.data?.pages.flatMap((p) => p.reviews) ?? [];
+            const canShowMore = Boolean(reviewsQuery.hasNextPage);
+
+            return (
+              <>
+                <div className="mt-2 flex items-center gap-2">
+                  <img
+                    src={reviewStarIconUrl}
+                    alt=""
+                    className="h-5 w-5"
+                    aria-hidden
+                  />
+                  <div
+                    style={{
+                      fontFamily: "var(--font-body)",
+                      fontWeight: 700,
+                      fontSize: "var(--text-text-sm)",
+                      lineHeight: "var(--leading-text-sm)",
+                      letterSpacing: "-0.02em",
+                      color: "var(--Neutral-950, #0A0D12)",
+                    }}
+                  >
+                    {typeof avg === "number" ? avg.toFixed(1) : "-"} ({total}{" "}
+                    Ulasan)
+                  </div>
+                </div>
+
+                {reviewsQuery.isLoading ? (
+                  <div className="mt-4 text-sm text-[hsl(var(--muted-foreground))]">
+                    Loading…
+                  </div>
+                ) : reviewsQuery.isError ? (
+                  <div className="mt-4 rounded-2xl bg-[hsl(var(--muted))] px-4 py-3 text-sm text-[hsl(var(--muted-foreground))]">
+                    {(reviewsQuery.error as Error)?.message ??
+                      "Gagal memuat review"}
+                  </div>
+                ) : reviewsAll.length ? (
+                  <div className="mt-4 space-y-4">
+                    {reviewsAll.map((r) => {
+                      const ratingRounded = Math.max(
+                        0,
+                        Math.min(5, Math.round(r.rating)),
+                      );
+                      const dateText = formatReviewDate(r.createdAt);
+
+                      return (
+                        <div
+                          key={r.id}
+                          className="rounded-2xl bg-white p-4 shadow-[0px_0px_20px_0px_#CBCACA40]"
+                        >
+                          <div className="flex gap-3">
+                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
+                              {r.userAvatarUrl ? (
+                                <img
+                                  src={r.userAvatarUrl}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  aria-hidden
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div
+                                  className="flex h-full w-full items-center justify-center text-sm font-bold text-(--Neutral-950,#0A0D12)"
+                                  aria-hidden
+                                >
+                                  {initials(r.userName)}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div
+                                className="truncate"
+                                style={{
+                                  fontFamily: "var(--font-body)",
+                                  fontWeight: 800,
+                                  fontSize: "var(--text-text-sm)",
+                                  lineHeight: "var(--leading-text-sm)",
+                                  color: "var(--Neutral-950, #0A0D12)",
+                                }}
+                              >
+                                {r.userName}
+                              </div>
+
+                              {dateText ? (
+                                <div
+                                  className="mt-1 text-xs"
+                                  style={{
+                                    fontFamily: "var(--font-body)",
+                                    fontWeight: 500,
+                                    fontSize: "var(--text-text-xs)",
+                                    lineHeight: "var(--leading-text-xs)",
+                                    letterSpacing: "-0.02em",
+                                    color: "hsl(var(--muted-foreground))",
+                                  }}
+                                >
+                                  {dateText}
+                                </div>
+                              ) : null}
+
+                              <div className="mt-2 flex items-center gap-1">
+                                {Array.from({ length: 5 }).map((_, idx) => (
+                                  <img
+                                    key={`star-${r.id}-${idx}`}
+                                    src={reviewStarIconUrl}
+                                    alt=""
+                                    aria-hidden
+                                    className={`h-5 w-5 ${
+                                      idx < ratingRounded
+                                        ? "opacity-100"
+                                        : "opacity-30"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+
+                              <div
+                                className="mt-3 text-sm"
+                                style={{
+                                  fontFamily: "var(--font-body)",
+                                  fontWeight: 400,
+                                  fontSize: "var(--text-text-sm)",
+                                  lineHeight: "var(--leading-text-sm)",
+                                  letterSpacing: "-0.02em",
+                                  color: "var(--Neutral-950, #0A0D12)",
+                                }}
+                              >
+                                {r.comment}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {canShowMore ? (
+                      <div className="flex justify-center pt-2">
+                        <button
+                          type="button"
+                          onClick={() => reviewsQuery.fetchNextPage()}
+                          className="h-10 w-40 rounded-[100px] border border-(--Neutral-300,#D5D7DA) bg-transparent px-2 opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                          style={{
+                            fontFamily: "var(--font-body)",
+                            fontWeight: 700,
+                            fontSize: "var(--text-text-sm)",
+                            lineHeight: "var(--leading-text-sm)",
+                            letterSpacing: "-0.02em",
+                            color: "var(--Neutral-950, #0A0D12)",
+                          }}
+                          disabled={reviewsQuery.isFetchingNextPage}
+                        >
+                          {reviewsQuery.isFetchingNextPage
+                            ? "Loading…"
+                            : "Show More"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : reviewsQuery.isSuccess ? (
+                  <div className="mt-4 rounded-2xl bg-[hsl(var(--muted))] px-4 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
+                    Tidak ada review untuk ditampilkan.
+                  </div>
+                ) : null}
+              </>
+            );
+          })()}
+        </section>
       </main>
+
+      <FooterPage />
     </div>
   );
 }
