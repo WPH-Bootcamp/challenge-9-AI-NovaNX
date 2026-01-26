@@ -6,11 +6,13 @@ export type RestaurantSummary = {
   lat?: number;
   long?: number;
   imageUrl?: string;
+  images?: string[];
 };
 
 export type RestaurantMenuItem = {
   id: string;
   name: string;
+  type?: string;
   price?: number;
   imageUrl?: string;
   description?: string;
@@ -24,5 +26,6 @@ export type RestaurantDetail = {
   lat?: number;
   long?: number;
   imageUrl?: string;
+  images?: string[];
   menus: RestaurantMenuItem[];
 };

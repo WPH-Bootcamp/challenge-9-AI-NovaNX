@@ -7,7 +7,9 @@ import backIconUrl from "../../assets/images/arrowCircleBrokenLeftMobile.svg";
 import shareIconUrl from "../../assets/images/ButtonShareMobile.svg";
 import starUrl from "../../assets/images/StarMobile.svg";
 import { HomeHeader } from "../../components/layout/HomeHeader";
+import { useAppDispatch, useAppSelector } from "../../features/hooks";
 import { formatCurrency } from "../../lib/utils";
+import { addToCart, setQuantity } from "../../features/cart/cartSlice";
 import { getAuthToken } from "../../services/auth/token";
 
 import type {
@@ -40,7 +42,8 @@ function asString(value: unknown): string | undefined {
 }
 
 function asNumber(value: unknown): number | undefined {
-  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : undefined;
   if (typeof value === "string") {
     const n = Number(value);
     return Number.isFinite(n) ? n : undefined;
@@ -146,12 +149,23 @@ function mapMenuItem(raw: unknown): RestaurantMenuItem | null {
     asString(raw.menuId) ??
     asString(raw.menu_id);
   const name =
-    asString(raw.name) ?? asString(raw.title) ?? "";
+    asString(raw.foodName) ??
+    asString(raw.food_name) ??
+    asString(raw.name) ??
+    asString(raw.title) ??
+    "";
 
   if (!id || !name) return null;
 
   const price =
     asNumber(raw.price) ?? asNumber(raw.harga) ?? asNumber(raw.amount);
+
+  const typeRaw =
+    asString(raw.type) ??
+    asString(raw.foodType) ??
+    asString(raw.food_type) ??
+    asString(raw.category);
+  const type = typeRaw ? typeRaw.toLowerCase() : undefined;
 
   const imageUrl = normalizeImageUrl(
     asString(raw.imageUrl) ||
@@ -161,10 +175,9 @@ function mapMenuItem(raw: unknown): RestaurantMenuItem | null {
       asString(raw.thumbnail),
   );
 
-  const description =
-    asString(raw.description) ?? asString(raw.desc);
+  const description = asString(raw.description) ?? asString(raw.desc);
 
-  return { id, name, price, imageUrl, description };
+  return { id, name, type, price, imageUrl, description };
 }
 
 function mapDetail(payload: unknown, id: string): RestaurantDetail {
@@ -180,11 +193,9 @@ function mapDetail(payload: unknown, id: string): RestaurantDetail {
     asString(dataNode.restaurant_name) ??
     "Restaurant";
 
-  const star =
-    asNumber(dataNode.star) ?? asNumber(dataNode.rating);
+  const star = asNumber(dataNode.star) ?? asNumber(dataNode.rating);
 
-  const place =
-    asString(dataNode.place) ?? asString(dataNode.address);
+  const place = asString(dataNode.place) ?? asString(dataNode.address);
 
   const lat =
     asNumber(dataNode.lat) ??
@@ -209,13 +220,37 @@ function mapDetail(payload: unknown, id: string): RestaurantDetail {
     asNumber(getNested(dataNode, ["coords", "lng"])) ??
     asNumber(getNested(dataNode, ["coords", "longitude"]));
 
-  const imageUrl = normalizeImageUrl(
-    asString(dataNode.imageUrl) ||
-      asString(dataNode.image_url) ||
-      asString(dataNode.image) ||
-      asString(dataNode.photo) ||
-      asString(dataNode.logo),
-  );
+  const imagesNode =
+    dataNode.images ??
+    getNested(dataNode, ["data", "images"]) ??
+    getNested(node, ["data", "images"]) ??
+    getNested(node, ["images"]);
+
+  const images = extractArray(imagesNode)
+    .map((raw) => {
+      if (typeof raw === "string") return normalizeImageUrl(raw);
+      if (!isRecord(raw)) return undefined;
+      return normalizeImageUrl(
+        asString(raw.url) ||
+          asString(raw.imageUrl) ||
+          asString(raw.image_url) ||
+          asString(raw.image) ||
+          asString(raw.photo) ||
+          asString(raw.src) ||
+          asString(raw.path),
+      );
+    })
+    .filter((u): u is string => Boolean(u));
+
+  const imageUrl =
+    images[0] ??
+    normalizeImageUrl(
+      asString(dataNode.imageUrl) ||
+        asString(dataNode.image_url) ||
+        asString(dataNode.image) ||
+        asString(dataNode.photo) ||
+        asString(dataNode.logo),
+    );
 
   const menusNode =
     dataNode.menus ??
@@ -229,7 +264,7 @@ function mapDetail(payload: unknown, id: string): RestaurantDetail {
     .map(mapMenuItem)
     .filter((m): m is RestaurantMenuItem => Boolean(m));
 
-  return { id, name, star, place, lat, long, imageUrl, menus };
+  return { id, name, star, place, lat, long, imageUrl, images, menus };
 }
 
 export function DetailPage() {
@@ -237,6 +272,18 @@ export function DetailPage() {
   const params = useParams();
   const restaurantId = params.id ?? "";
   const userCoords = useUserLocation();
+
+  const dispatch = useAppDispatch();
+  const cartItemsById = useAppSelector((s) => s.cart.itemsById);
+
+  const [activeMenuTab, setActiveMenuTab] = useState<"all" | "food" | "drink">(
+    "all",
+  );
+
+  const menuPageKey = `${restaurantId}::${activeMenuTab}`;
+  const [visibleMenuRowsByKey, setVisibleMenuRowsByKey] = useState<
+    Record<string, number>
+  >({});
 
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
@@ -296,27 +343,44 @@ export function DetailPage() {
           lat: detailQuery.data.lat,
           long: detailQuery.data.long,
           imageUrl: detailQuery.data.imageUrl,
+          images: detailQuery.data.images,
         }
       : undefined);
 
-  const heroImages = useMemo(() => {
-    const urls = [summary?.imageUrl, ...(detailQuery.data?.menus ?? []).map((m) => m.imageUrl)];
-    const unique = Array.from(new Set(urls.filter((u): u is string => Boolean(u))));
-    return unique.slice(0, 5);
-  }, [summary?.imageUrl, detailQuery.data?.menus]);
+  const heroImages = (() => {
+    // Spec: banner/hero image comes from API `images` field, max 3.
+    const urls = (detailQuery.data?.images ?? summary?.images ?? []).filter(
+      (u): u is string => Boolean(u),
+    );
 
-  const dotModel = useMemo(() => {
+    const unique = Array.from(new Set(urls));
+    if (unique.length) return unique.slice(0, 3);
+
+    // Fallback when API doesn't return images.
+    return summary?.imageUrl ? [summary.imageUrl] : [];
+  })();
+
+  const dotModel = (() => {
     const count = heroImages.length;
+    // UI spec: always show 3 dots (even if only 1 image)
     if (count <= 1) {
-      return { dotCount: 1, indexForDot: [0], activeDot: 0 };
+      return { dotCount: 3, indexForDot: [0, 0, 0], activeDot: 0 };
     }
 
     if (count === 2) {
-      return { dotCount: 2, indexForDot: [0, 1], activeDot: activeHeroIndex };
+      return {
+        dotCount: 3,
+        indexForDot: [0, 0, 1],
+        activeDot: activeHeroIndex <= 0 ? 0 : 2,
+      };
     }
 
     if (count === 3) {
-      return { dotCount: 3, indexForDot: [0, 1, 2], activeDot: activeHeroIndex };
+      return {
+        dotCount: 3,
+        indexForDot: [0, 1, 2],
+        activeDot: Math.max(0, Math.min(activeHeroIndex, 2)),
+      };
     }
 
     const middle = Math.floor((count - 1) / 2);
@@ -324,7 +388,7 @@ export function DetailPage() {
     const activeDot =
       activeHeroIndex <= 0 ? 0 : activeHeroIndex >= count - 1 ? 2 : 1;
     return { dotCount: 3, indexForDot, activeDot };
-  }, [heroImages.length, activeHeroIndex]);
+  })();
 
   useEffect(() => {
     const el = carouselRef.current;
@@ -336,7 +400,9 @@ export function DetailPage() {
       rafId = requestAnimationFrame(() => {
         const width = el.clientWidth || 1;
         const index = Math.round(el.scrollLeft / width);
-        setActiveHeroIndex(Math.max(0, Math.min(index, Math.max(0, heroImages.length - 1))));
+        setActiveHeroIndex(
+          Math.max(0, Math.min(index, Math.max(0, heroImages.length - 1))),
+        );
       });
     };
 
@@ -350,14 +416,46 @@ export function DetailPage() {
   }, [heroImages.length]);
 
   const distanceText =
-    userCoords && typeof summary?.lat === "number" && typeof summary?.long === "number"
+    userCoords &&
+    typeof summary?.lat === "number" &&
+    typeof summary?.long === "number"
       ? formatKm(
-          haversineKm(userCoords.lat, userCoords.long, summary.lat, summary.long),
+          haversineKm(
+            userCoords.lat,
+            userCoords.long,
+            summary.lat,
+            summary.long,
+          ),
         )
       : "";
 
   const place = summary?.place ?? "";
-  const placeLine = place && distanceText ? `${place} · ${distanceText}` : place || distanceText;
+  const placeLine =
+    place && distanceText
+      ? `${place} · ${distanceText}`
+      : place || distanceText;
+
+  const menusAll = detailQuery.data?.menus ?? [];
+  const menusForTab = (() => {
+    if (activeMenuTab === "all") return menusAll;
+    return menusAll.filter(
+      (m) => (m.type ?? "").toLowerCase() === activeMenuTab,
+    );
+  })();
+
+  const visibleMenuRows = visibleMenuRowsByKey[menuPageKey] ?? 4;
+
+  const visibleMenus = (() => {
+    const itemsPerRow = 2;
+    const visibleCount = visibleMenuRows * itemsPerRow;
+    return menusForTab.slice(0, visibleCount);
+  })();
+
+  const canShowMoreMenus = (() => {
+    const itemsPerRow = 2;
+    const visibleCount = visibleMenuRows * itemsPerRow;
+    return menusForTab.length > visibleCount;
+  })();
 
   async function onShare() {
     const url = window.location.href;
@@ -394,7 +492,8 @@ export function DetailPage() {
       <section
         className="relative w-full overflow-hidden"
         style={{
-          background: "radial-gradient(1200px 600px at 50% -10%, rgba(0,0,0,0.08), transparent)",
+          background:
+            "radial-gradient(1200px 600px at 50% -10%, rgba(0,0,0,0.08), transparent)",
         }}
         aria-label="Detail header"
       >
@@ -435,11 +534,14 @@ export function DetailPage() {
                   className="no-scrollbar flex h-64 w-full snap-x snap-mandatory overflow-x-auto scroll-smooth"
                 >
                   {heroImages.map((url, idx) => (
-                    <div key={`${url}-${idx}`} className="min-w-full snap-center">
+                    <div
+                      key={`${url}-${idx}`}
+                      className="min-w-full snap-center bg-white"
+                    >
                       <img
                         src={url}
                         alt={summary.name}
-                        className="h-64 w-full object-cover"
+                        className="h-64 w-full object-contain"
                         loading={idx === 0 ? "eager" : "lazy"}
                       />
                     </div>
@@ -452,16 +554,19 @@ export function DetailPage() {
               )}
             </div>
 
-            <div className="flex justify-center gap-2" aria-label="Image pagination">
+            <div
+              className="flex items-center justify-center gap-2"
+              aria-label="Image pagination"
+            >
               {Array.from({ length: dotModel.dotCount }).map((_, idx) => (
                 <button
                   key={`dot-${idx}`}
                   type="button"
-                  className={
+                  className={`h-2 w-2 shrink-0 rounded-full p-0 ${
                     idx === dotModel.activeDot
-                      ? "h-2 w-2 rounded-full bg-[hsl(var(--foreground))]"
-                      : "h-2 w-2 rounded-full bg-[hsl(var(--muted))]"
-                  }
+                      ? "bg-(--Primary-100,#C12116)"
+                      : "bg-[#D9D9D9]"
+                  }`}
                   aria-label={`Go to image ${idx + 1}`}
                   onClick={() => {
                     const el = carouselRef.current;
@@ -515,7 +620,9 @@ export function DetailPage() {
                         color: "var(--Neutral-950, #0A0D12)",
                       }}
                     >
-                      {typeof summary.star === "number" ? summary.star.toFixed(1) : "-"}
+                      {typeof summary.star === "number"
+                        ? summary.star.toFixed(1)
+                        : "-"}
                     </div>
                   </div>
 
@@ -541,7 +648,12 @@ export function DetailPage() {
                 className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-(--Neutral-300,#D5D7DA) bg-white"
                 aria-label="Share"
               >
-                <img src={shareIconUrl} alt="" className="h-6 w-6" aria-hidden />
+                <img
+                  src={shareIconUrl}
+                  alt=""
+                  className="h-6 w-6"
+                  aria-hidden
+                />
               </button>
             </div>
           </section>
@@ -562,7 +674,9 @@ export function DetailPage() {
             </h2>
 
             {detailQuery.isFetching ? (
-              <div className="text-xs text-[hsl(var(--muted-foreground))]">Loading…</div>
+              <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                Loading…
+              </div>
             ) : null}
           </div>
 
@@ -572,45 +686,240 @@ export function DetailPage() {
             </div>
           ) : null}
 
-          {detailQuery.data?.menus?.length ? (
-            <div className="mt-3 space-y-3">
-              {detailQuery.data.menus.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex gap-3 rounded-2xl bg-white p-3 shadow-[0px_0px_20px_0px_#CBCACA40]"
-                >
-                  {m.imageUrl ? (
-                    <img
-                      src={m.imageUrl}
-                      alt={m.name}
-                      className="h-18 w-18 shrink-0 rounded-[14px] object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-[14px] bg-[hsl(var(--muted))] text-[11px] text-[hsl(var(--muted-foreground))]">
-                      No image
-                    </div>
-                  )}
+          <div
+            className="mt-3 flex items-center gap-2"
+            aria-label="Menu filter"
+          >
+            <button
+              type="button"
+              onClick={() => setActiveMenuTab("all")}
+              aria-pressed={activeMenuTab === "all"}
+              className={`flex h-10 min-w-22.5 items-center justify-center gap-2 whitespace-nowrap rounded-[100px] border px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 ${
+                activeMenuTab === "all"
+                  ? "border-(--Primary-100,#C12116) bg-[#FFECEC]"
+                  : "border-(--Neutral-300,#D5D7DA) bg-transparent"
+              }`}
+              style={{
+                fontFamily: "var(--font-body)",
+                fontWeight: activeMenuTab === "all" ? 700 : 600,
+                fontSize: "var(--text-text-sm)",
+                lineHeight: "var(--leading-text-sm)",
+                letterSpacing: "-0.02em",
+                color:
+                  activeMenuTab === "all"
+                    ? "var(--Primary-100, #C12116)"
+                    : "var(--Neutral-950, #0A0D12)",
+              }}
+            >
+              All Menu
+            </button>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-extrabold text-(--Neutral-950,#0A0D12)">
-                      {m.name}
+            <button
+              type="button"
+              onClick={() => setActiveMenuTab("food")}
+              aria-pressed={activeMenuTab === "food"}
+              className={`flex h-10 w-16.75 items-center justify-center gap-2 rounded-[100px] border px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 ${
+                activeMenuTab === "food"
+                  ? "border-(--Primary-100,#C12116) bg-[#FFECEC]"
+                  : "border-(--Neutral-300,#D5D7DA) bg-transparent"
+              }`}
+              style={{
+                fontFamily: "var(--font-body)",
+                fontWeight: 700,
+                fontSize: "var(--text-text-sm)",
+                lineHeight: "var(--leading-text-sm)",
+                letterSpacing: "-0.02em",
+                color:
+                  activeMenuTab === "food"
+                    ? "var(--Primary-100, #C12116)"
+                    : "var(--Neutral-950, #0A0D12)",
+              }}
+            >
+              Food
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveMenuTab("drink")}
+              aria-pressed={activeMenuTab === "drink"}
+              className={`flex h-10 w-17.5 items-center justify-center gap-2 rounded-[100px] border px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 ${
+                activeMenuTab === "drink"
+                  ? "border-(--Primary-100,#C12116) bg-[#FFECEC]"
+                  : "border-(--Neutral-300,#D5D7DA) bg-transparent"
+              }`}
+              style={{
+                fontFamily: "var(--font-body)",
+                fontWeight: 700,
+                fontSize: "var(--text-text-sm)",
+                lineHeight: "var(--leading-text-sm)",
+                letterSpacing: "-0.02em",
+                color:
+                  activeMenuTab === "drink"
+                    ? "var(--Primary-100, #C12116)"
+                    : "var(--Neutral-950, #0A0D12)",
+              }}
+            >
+              Drink
+            </button>
+          </div>
+
+          {menusForTab.length ? (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {visibleMenus.map((m) => {
+                const qty = cartItemsById[m.id]?.quantity ?? 0;
+                const priceText =
+                  typeof m.price === "number" ? formatCurrency(m.price) : "-";
+
+                return (
+                  <div
+                    key={m.id}
+                    className="flex h-76.625 w-43 flex-col overflow-hidden rounded-2xl bg-white opacity-100 shadow-[0px_0px_20px_0px_#CBCACA40]"
+                  >
+                    <div className="relative aspect-square w-full bg-[hsl(var(--muted))]">
+                      {m.imageUrl ? (
+                        <img
+                          src={m.imageUrl}
+                          alt={m.name}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-[hsl(var(--muted-foreground))]">
+                          No image
+                        </div>
+                      )}
                     </div>
-                    {m.description ? (
-                      <div className="mt-1 line-clamp-2 text-xs text-[hsl(var(--muted-foreground))]">
-                        {m.description}
+
+                    <div className="flex flex-1 flex-col gap-2 p-3">
+                      <div
+                        className="line-clamp-1"
+                        style={{
+                          fontFamily: "var(--font-body)",
+                          fontWeight: 500,
+                          fontSize: "var(--text-text-sm)",
+                          lineHeight: "var(--leading-text-sm)",
+                          letterSpacing: "-0.02em",
+                          color: "var(--Neutral-950, #0A0D12)",
+                        }}
+                      >
+                        {m.name}
                       </div>
-                    ) : null}
-                    <div className="mt-2 text-sm font-semibold text-(--Neutral-950,#0A0D12)">
-                      {typeof m.price === "number" ? formatCurrency(m.price) : "-"}
+
+                      <div
+                        style={{
+                          fontFamily: "var(--font-body)",
+                          fontWeight: 800,
+                          fontSize: "var(--text-text-sm)",
+                          lineHeight: "var(--leading-text-sm)",
+                          letterSpacing: "-0.02em",
+                          color: "var(--Neutral-950, #0A0D12)",
+                        }}
+                      >
+                        {priceText}
+                      </div>
+
+                      <div className="mt-auto">
+                        {qty <= 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof m.price !== "number") return;
+                            dispatch(
+                              addToCart({
+                                id: m.id,
+                                name: m.name,
+                                price: m.price,
+                                imageUrl: m.imageUrl,
+                              }),
+                            );
+                          }}
+                          className="h-10 w-full rounded-[100px] bg-(--Primary-100,#C12116) px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                          disabled={typeof m.price !== "number"}
+                        >
+                          Add
+                        </button>
+                        ) : (
+                        <div className="flex h-10 w-full items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              dispatch(
+                                setQuantity({ id: m.id, quantity: qty - 1 }),
+                              )
+                            }
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-(--Neutral-300,#D5D7DA) bg-white text-base font-bold text-(--Neutral-950,#0A0D12) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                            aria-label="Decrease quantity"
+                          >
+                            −
+                          </button>
+
+                          <div
+                            className="text-sm"
+                            style={{
+                              fontFamily: "var(--font-body)",
+                              fontWeight: 700,
+                              fontSize: "var(--text-text-sm)",
+                              lineHeight: "var(--leading-text-sm)",
+                              letterSpacing: "-0.02em",
+                              color: "var(--Neutral-950, #0A0D12)",
+                            }}
+                          >
+                            {qty}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              dispatch(
+                                setQuantity({ id: m.id, quantity: qty + 1 }),
+                              )
+                            }
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-(--Primary-100,#C12116) text-base font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : detailQuery.isSuccess ? (
             <div className="mt-3 rounded-2xl bg-[hsl(var(--muted))] px-4 py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-              Tidak ada menu untuk ditampilkan.
+              {menusAll.length
+                ? "Tidak ada menu untuk kategori ini."
+                : "Tidak ada menu untuk ditampilkan."}
+            </div>
+          ) : null}
+
+          {menusForTab.length && canShowMoreMenus ? (
+            <div className="flex justify-center pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  const itemsPerRow = 2;
+                  const maxRows = Math.ceil(menusForTab.length / itemsPerRow);
+                  setVisibleMenuRowsByKey((prev) => {
+                    const current = prev[menuPageKey] ?? 4;
+                    const next = Math.min(current + 4, maxRows);
+                    return { ...prev, [menuPageKey]: next };
+                  });
+                }}
+                className="h-10 w-40 rounded-[100px] border border-(--Neutral-300,#D5D7DA) bg-transparent px-2 opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontWeight: 700,
+                  fontSize: "var(--text-text-sm)",
+                  lineHeight: "var(--leading-text-sm)",
+                  letterSpacing: "-0.02em",
+                  color: "var(--Neutral-950, #0A0D12)",
+                }}
+              >
+                Show More
+              </button>
             </div>
           ) : null}
         </section>
