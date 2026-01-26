@@ -3,7 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { LoginPage } from "../pages/login/LoginPage.tsx";
 import { HomePage } from "../pages/home/home.tsx";
 import { MenuPage } from "../pages/menu/MenuPage";
-import { CartPage } from "../pages/cart/CartPage";
+import { CartPage } from "../pages/cart/CartPage.tsx";
 import { CheckoutPage } from "../pages/checkout/CheckoutPage";
 import { OrdersPage } from "../pages/orders/OrdersPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
@@ -37,6 +37,10 @@ export const router = createBrowserRouter([
         element: <DetailPage />,
       },
       {
+        path: ROUTES.cart,
+        element: <CartPage />,
+      },
+      {
         element: <AppLayout />,
         children: [
           { path: ROUTES.menu, element: <MenuPage /> },
@@ -55,7 +59,6 @@ export const router = createBrowserRouter([
             element: <QuickNavPage title="Delivery" />,
           },
           { path: ROUTES.lunch, element: <QuickNavPage title="Lunch" /> },
-          { path: ROUTES.cart, element: <CartPage /> },
           { path: ROUTES.checkout, element: <CheckoutPage /> },
           { path: ROUTES.orders, element: <OrdersPage /> },
         ],

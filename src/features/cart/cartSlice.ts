@@ -5,6 +5,8 @@ export type CartItem = {
   name: string;
   price: number;
   imageUrl?: string;
+  restaurantId?: string;
+  restaurantName?: string;
   quantity: number;
 };
 
@@ -28,12 +30,17 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     addToCart(state, action: PayloadAction<AddToCartPayload>) {
-      const { id, name, price, imageUrl } = action.payload;
+      const { id, name, price, imageUrl, restaurantId, restaurantName } =
+        action.payload;
       const quantityToAdd = action.payload.quantity ?? 1;
 
       const existing = state.itemsById[id];
       if (existing) {
         existing.quantity += quantityToAdd;
+        if (!existing.restaurantId && restaurantId)
+          existing.restaurantId = restaurantId;
+        if (!existing.restaurantName && restaurantName)
+          existing.restaurantName = restaurantName;
         return;
       }
 
@@ -42,6 +49,8 @@ const cartSlice = createSlice({
         name,
         price,
         imageUrl,
+        restaurantId,
+        restaurantName,
         quantity: quantityToAdd,
       };
     },

@@ -1028,6 +1028,8 @@ export function DetailPage() {
                                   name: m.name,
                                   price: m.price,
                                   imageUrl: m.imageUrl,
+                                  restaurantId: summary?.id,
+                                  restaurantName: summary?.name,
                                 }),
                               );
                             }}
