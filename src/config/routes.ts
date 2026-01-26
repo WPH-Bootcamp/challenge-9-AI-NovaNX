@@ -8,6 +8,8 @@ export const ROUTES = {
 
   detail: "/detail/:id",
 
+  review: "/review/:restaurantId",
+
   allRestaurant: "/all-restaurant",
   nearby: "/nearby",
   discount: "/discount",

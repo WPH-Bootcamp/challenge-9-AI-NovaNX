@@ -10,6 +10,7 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { QuickNavPage } from "../pages/quicknav/QuickNavPage.tsx";
 import { RecommendedRestaurantPage } from "../pages/recommendedrestaurant/RecommendedRestaurant.tsx";
 import { DetailPage } from "../pages/detail/detail.tsx";
+import { ReviewPage } from "../pages/review/review.tsx";
 
 import { AppLayout } from "../components/layout/AppLayout";
 import { RequireAuth } from "../components/layout/RequireAuth";
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: ROUTES.menu, element: <MenuPage /> },
+          { path: ROUTES.review, element: <ReviewPage /> },
           {
             path: ROUTES.allRestaurant,
             element: <QuickNavPage title="All Restaurant" />,

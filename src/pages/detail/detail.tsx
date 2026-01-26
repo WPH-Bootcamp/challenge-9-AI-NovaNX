@@ -820,66 +820,66 @@ export function DetailPage() {
 
                       <div className="mt-auto">
                         {qty <= 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (typeof m.price !== "number") return;
-                            dispatch(
-                              addToCart({
-                                id: m.id,
-                                name: m.name,
-                                price: m.price,
-                                imageUrl: m.imageUrl,
-                              }),
-                            );
-                          }}
-                          className="h-10 w-full rounded-[100px] bg-(--Primary-100,#C12116) px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
-                          disabled={typeof m.price !== "number"}
-                        >
-                          Add
-                        </button>
-                        ) : (
-                        <div className="flex h-10 w-full items-center justify-between">
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              if (typeof m.price !== "number") return;
                               dispatch(
-                                setQuantity({ id: m.id, quantity: qty - 1 }),
-                              )
-                            }
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-(--Neutral-300,#D5D7DA) bg-white text-base font-bold text-(--Neutral-950,#0A0D12) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
-                            aria-label="Decrease quantity"
-                          >
-                            −
-                          </button>
-
-                          <div
-                            className="text-sm"
-                            style={{
-                              fontFamily: "var(--font-body)",
-                              fontWeight: 700,
-                              fontSize: "var(--text-text-sm)",
-                              lineHeight: "var(--leading-text-sm)",
-                              letterSpacing: "-0.02em",
-                              color: "var(--Neutral-950, #0A0D12)",
+                                addToCart({
+                                  id: m.id,
+                                  name: m.name,
+                                  price: m.price,
+                                  imageUrl: m.imageUrl,
+                                }),
+                              );
                             }}
+                            className="h-10 w-full rounded-[100px] bg-(--Primary-100,#C12116) px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                            disabled={typeof m.price !== "number"}
                           >
-                            {qty}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              dispatch(
-                                setQuantity({ id: m.id, quantity: qty + 1 }),
-                              )
-                            }
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-(--Primary-100,#C12116) text-base font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
-                            aria-label="Increase quantity"
-                          >
-                            +
+                            Add
                           </button>
-                        </div>
+                        ) : (
+                          <div className="flex h-10 w-full items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                dispatch(
+                                  setQuantity({ id: m.id, quantity: qty - 1 }),
+                                )
+                              }
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-(--Neutral-300,#D5D7DA) bg-white text-base font-bold text-(--Neutral-950,#0A0D12) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                              aria-label="Decrease quantity"
+                            >
+                              −
+                            </button>
+
+                            <div
+                              className="text-sm"
+                              style={{
+                                fontFamily: "var(--font-body)",
+                                fontWeight: 700,
+                                fontSize: "var(--text-text-sm)",
+                                lineHeight: "var(--leading-text-sm)",
+                                letterSpacing: "-0.02em",
+                                color: "var(--Neutral-950, #0A0D12)",
+                              }}
+                            >
+                              {qty}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                dispatch(
+                                  setQuantity({ id: m.id, quantity: qty + 1 }),
+                                )
+                              }
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-(--Primary-100,#C12116) text-base font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+                              aria-label="Increase quantity"
+                            >
+                              +
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
