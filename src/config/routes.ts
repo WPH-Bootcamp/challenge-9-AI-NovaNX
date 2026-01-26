@@ -6,6 +6,8 @@ export const ROUTES = {
   orders: "/orders",
   login: "/login",
 
+  detail: "/detail/:id",
+
   allRestaurant: "/all-restaurant",
   nearby: "/nearby",
   discount: "/discount",

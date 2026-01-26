@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 import starUrl from "../../assets/images/StarMobile.svg";
+import { ROUTES } from "../../config/routes";
 import { getAuthToken } from "../../services/auth/token";
 import type { RecommendedRestaurant } from "./RecommendedRestaurant";
 
@@ -167,8 +169,12 @@ function normalizeBaseUrl(raw: string | undefined): string {
   return value;
 }
 
+const DEFAULT_API_BASE_URL =
+  "https://restaurant-be-400174736012.asia-southeast2.run.app";
+
 const API_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL as string | undefined,
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+    DEFAULT_API_BASE_URL,
 );
 const RECOMMENDED_URL = API_BASE_URL
   ? `${API_BASE_URL}/api/resto/recommended`
@@ -433,6 +439,7 @@ export function useRecommendedRestaurantsQuery() {
 }
 
 export function RecommendedRestaurantPage() {
+  const navigate = useNavigate();
   const restaurantsQuery = useRecommendedRestaurantsQuery();
   const { coords: userCoords } = useUserLocation();
   const [visibleCount, setVisibleCount] = useState(5);
@@ -565,9 +572,15 @@ export function RecommendedRestaurantPage() {
               : distanceText;
 
             return (
-              <div
+              <button
+                type="button"
                 key={r.id}
-                className="mx-auto flex h-[114px] w-[361px] gap-2 rounded-[16px] bg-white p-3 opacity-100 shadow-[0px_0px_20px_0px_#CBCACA40]"
+                onClick={() =>
+                  navigate(ROUTES.detail.replace(":id", r.id), {
+                    state: { restaurant: r },
+                  })
+                }
+                className="mx-auto flex h-[114px] w-[361px] gap-2 rounded-[16px] bg-white p-3 text-left opacity-100 shadow-[0px_0px_20px_0px_#CBCACA40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
               >
                 {r.imageUrl ? (
                   <img
@@ -628,7 +641,7 @@ export function RecommendedRestaurantPage() {
                     {placeLine || "-"}
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
 

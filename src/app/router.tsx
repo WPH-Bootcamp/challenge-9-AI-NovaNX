@@ -9,6 +9,7 @@ import { OrdersPage } from "../pages/orders/OrdersPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { QuickNavPage } from "../pages/quicknav/QuickNavPage.tsx";
 import { RecommendedRestaurantPage } from "../pages/recommendedrestaurant/RecommendedRestaurant.tsx";
+import { DetailPage } from "../pages/detail/detail.tsx";
 
 import { AppLayout } from "../components/layout/AppLayout";
 import { RequireAuth } from "../components/layout/RequireAuth";
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.bestSeller,
         element: <RecommendedRestaurantPage />,
+      },
+      {
+        path: ROUTES.detail,
+        element: <DetailPage />,
       },
       {
         element: <AppLayout />,
