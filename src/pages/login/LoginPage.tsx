@@ -8,7 +8,7 @@ import { Input } from "../../ui/input";
 
 import type { AuthMode } from "./LoginPage";
 
-import loginHeroUrl from "../../assets/images/login-hero.svg";
+import loginHeroUrl from "../../assets/images/image8.svg";
 import logoUrl from "../../assets/images/Logo.svg";
 import eyeoffMobileUrl from "../../assets/images/eyeoffMobile.svg";
 import eyeonMobileUrl from "../../assets/images/eyeonMobile.svg";
@@ -190,18 +190,17 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="min-h-screen bg-white">
+      <div className="grid min-h-screen lg:grid-cols-2">
         <aside className="relative hidden lg:block">
           <img
             src={loginHeroUrl}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-black/25" />
         </aside>
 
-        <main className="flex items-start justify-center px-6 pb-10 pt-14 sm:px-10 sm:pt-20 lg:items-center lg:px-12 lg:py-12">
+        <main className="flex items-start justify-center bg-white px-6 pb-10 pt-14 sm:px-10 sm:pt-20 lg:items-center lg:px-12 lg:py-12">
           <div className="w-full max-w-md">
             <div className="mb-[var(--space-xl)] flex items-center gap-3 sm:mb-12">
               <FoodyLogoMark className="h-9 w-9" />
