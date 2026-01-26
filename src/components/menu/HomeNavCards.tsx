@@ -70,7 +70,12 @@ export function HomeNavCards() {
             className="flex flex-col items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
           >
             <div className="flex h-25 w-26.5 items-center justify-center rounded-2xl bg-white p-2 opacity-100 shadow-[0px_0px_20px_0px_#CBCACA40]">
-              <img src={item.iconUrl} alt="" className="h-12 w-12" aria-hidden="true" />
+              <img
+                src={item.iconUrl}
+                alt=""
+                className="h-12 w-12"
+                aria-hidden="true"
+              />
             </div>
 
             <div
