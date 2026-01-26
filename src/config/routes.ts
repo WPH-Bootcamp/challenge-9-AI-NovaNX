@@ -2,7 +2,10 @@ export const ROUTES = {
   home: "/",
   menu: "/menu",
   cart: "/cart",
+  addedQuantity: "/added-quantity",
   checkout: "/checkout",
+  paymentSuccess: "/payment-success",
+  deliveryAddress: "/delivery-address",
   orders: "/orders",
   login: "/login",
 

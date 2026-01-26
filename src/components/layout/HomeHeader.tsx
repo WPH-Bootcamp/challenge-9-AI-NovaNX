@@ -22,6 +22,13 @@ export function HomeHeader({ logoVariant = "default" }: HomeHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const [profileMenuPos, setProfileMenuPos] = useState<{
+    top: number;
+    left: number;
+  }>({
+    top: 0,
+    left: 0,
+  });
 
   const cartCount = useAppSelector((s) =>
     Object.values(s.cart.itemsById).reduce(
@@ -32,6 +39,28 @@ export function HomeHeader({ logoVariant = "default" }: HomeHeaderProps) {
 
   useEffect(() => {
     if (!isProfileOpen) return;
+
+    function updatePos() {
+      const btn = profileButtonRef.current;
+      if (!btn) return;
+
+      const rect = btn.getBoundingClientRect();
+      const menuWidth = 197;
+      const gutter = 12;
+
+      const top = rect.bottom + gutter;
+      const left = Math.min(
+        Math.max(gutter, rect.right - menuWidth),
+        window.innerWidth - menuWidth - gutter,
+      );
+
+      setProfileMenuPos({ top, left });
+    }
+
+    updatePos();
+
+    window.addEventListener("scroll", updatePos, { passive: true });
+    window.addEventListener("resize", updatePos);
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setIsProfileOpen(false);
@@ -50,6 +79,8 @@ export function HomeHeader({ logoVariant = "default" }: HomeHeaderProps) {
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("mousedown", onMouseDown);
     return () => {
+      window.removeEventListener("scroll", updatePos);
+      window.removeEventListener("resize", updatePos);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("mousedown", onMouseDown);
     };
@@ -58,11 +89,17 @@ export function HomeHeader({ logoVariant = "default" }: HomeHeaderProps) {
   return (
     <>
       <header className="flex items-center justify-between">
-        <img
-          src={logoVariant === "home" ? logoMobileUrl : logoUrl}
-          alt="Foody"
-          className="h-10 w-10"
-        />
+        <Link
+          to={ROUTES.home}
+          className="inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+          aria-label="Go to home"
+        >
+          <img
+            src={logoVariant === "home" ? logoMobileUrl : logoUrl}
+            alt="Foody"
+            className="h-10 w-10"
+          />
+        </Link>
 
         <div className="flex items-center gap-3">
           <Link
@@ -113,8 +150,8 @@ export function HomeHeader({ logoVariant = "default" }: HomeHeaderProps) {
         <div
           id="sidebar-profile-menu"
           ref={profileMenuRef}
-          className="absolute z-50"
-          style={{ top: 64, left: 182 }}
+          className="fixed z-9999"
+          style={{ top: profileMenuPos.top, left: profileMenuPos.left }}
         >
           <SidebarProfile onClose={() => setIsProfileOpen(false)} />
         </div>

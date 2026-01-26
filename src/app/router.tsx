@@ -4,13 +4,16 @@ import { LoginPage } from "../pages/login/LoginPage.tsx";
 import { HomePage } from "../pages/home/home.tsx";
 import { MenuPage } from "../pages/menu/MenuPage";
 import { CartPage } from "../pages/cart/CartPage.tsx";
-import { CheckoutPage } from "../pages/checkout/CheckoutPage";
+import { CheckoutPage } from "../pages/checkout/CheckoutPage.tsx";
 import { OrdersPage } from "../pages/orders/OrdersPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { QuickNavPage } from "../pages/quicknav/QuickNavPage.tsx";
 import { RecommendedRestaurantPage } from "../pages/recommendedrestaurant/RecommendedRestaurant.tsx";
 import { DetailPage } from "../pages/detail/detail.tsx";
 import { ReviewPage } from "../pages/review/review.tsx";
+import { AddedQuantityPage } from "../pages/addedQuantity/addedQuantity.tsx";
+import { DeliveryAddressPage } from "../pages/deliveryAddress/DeliveryAddressPage.tsx";
+import { PaymentSuccessPage } from "../pages/PaymentSuccessPage/PaymentSuccessPage.tsx";
 
 import { AppLayout } from "../components/layout/AppLayout";
 import { RequireAuth } from "../components/layout/RequireAuth";
@@ -41,6 +44,22 @@ export const router = createBrowserRouter([
         element: <CartPage />,
       },
       {
+        path: ROUTES.checkout,
+        element: <CheckoutPage />,
+      },
+      {
+        path: ROUTES.addedQuantity,
+        element: <AddedQuantityPage />,
+      },
+      {
+        path: ROUTES.deliveryAddress,
+        element: <DeliveryAddressPage />,
+      },
+      {
+        path: ROUTES.paymentSuccess,
+        element: <PaymentSuccessPage />,
+      },
+      {
         element: <AppLayout />,
         children: [
           { path: ROUTES.menu, element: <MenuPage /> },
@@ -59,7 +78,6 @@ export const router = createBrowserRouter([
             element: <QuickNavPage title="Delivery" />,
           },
           { path: ROUTES.lunch, element: <QuickNavPage title="Lunch" /> },
-          { path: ROUTES.checkout, element: <CheckoutPage /> },
           { path: ROUTES.orders, element: <OrdersPage /> },
         ],
       },

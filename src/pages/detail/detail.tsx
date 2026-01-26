@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import backIconUrl from "../../assets/images/arrowCircleBrokenLeftMobile.svg";
+import bagIconUrl from "../../assets/images/BagBlackMobile.svg";
 import shareIconUrl from "../../assets/images/ButtonShareMobile.svg";
 import reviewStarIconUrl from "../../assets/images/material-symbols_star-rounded_Mobile.svg";
 import starUrl from "../../assets/images/StarMobile.svg";
@@ -11,6 +12,7 @@ import { HomeHeader } from "../../components/layout/HomeHeader";
 import { useAppDispatch, useAppSelector } from "../../features/hooks";
 import { formatCurrency } from "../../lib/utils";
 import { addToCart, setQuantity } from "../../features/cart/cartSlice";
+import { ROUTES } from "../../config/routes";
 import { getAuthToken } from "../../services/auth/token";
 import { FooterPage } from "../footer/footer.tsx";
 
@@ -421,6 +423,41 @@ export function DetailPage() {
 
   const dispatch = useAppDispatch();
   const cartItemsById = useAppSelector((s) => s.cart.itemsById);
+
+  const [showAddedPopup, setShowAddedPopup] = useState(false);
+  const hideAddedPopupTimerRef = useRef<number | null>(null);
+
+  const cartTotals = useMemo(() => {
+    const items = Object.values(cartItemsById);
+    const itemCount = items.reduce(
+      (sum, item) => sum + (item.quantity ?? 0),
+      0,
+    );
+    const totalPrice = items.reduce(
+      (sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 0),
+      0,
+    );
+    return { itemCount, totalPrice };
+  }, [cartItemsById]);
+
+  function triggerAddedPopup() {
+    setShowAddedPopup(true);
+    if (hideAddedPopupTimerRef.current) {
+      window.clearTimeout(hideAddedPopupTimerRef.current);
+    }
+    hideAddedPopupTimerRef.current = window.setTimeout(() => {
+      setShowAddedPopup(false);
+      hideAddedPopupTimerRef.current = null;
+    }, 2500);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (hideAddedPopupTimerRef.current) {
+        window.clearTimeout(hideAddedPopupTimerRef.current);
+      }
+    };
+  }, []);
 
   const [activeMenuTab, setActiveMenuTab] = useState<"all" | "food" | "drink">(
     "all",
@@ -1032,6 +1069,7 @@ export function DetailPage() {
                                   restaurantName: summary?.name,
                                 }),
                               );
+                              triggerAddedPopup();
                             }}
                             className="h-10 w-full rounded-[100px] bg-(--Primary-100,#C12116) px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
                             disabled={typeof m.price !== "number"}
@@ -1314,6 +1352,72 @@ export function DetailPage() {
       </main>
 
       <FooterPage />
+
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 border-t border-(--Neutral-300,#D5D7DA) bg-white transition-transform duration-300 ease-out ${
+          showAddedPopup
+            ? "translate-y-0 pointer-events-auto"
+            : "translate-y-full pointer-events-none"
+        }`}
+        aria-label="Added to cart summary"
+      >
+        <div className="mx-auto flex w-full max-w-107.5 items-center justify-between gap-4 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.cart)}
+            className="flex min-w-0 items-center gap-2"
+            aria-label="Open cart"
+          >
+            <img src={bagIconUrl} alt="" className="h-5 w-5" aria-hidden />
+            <div className="min-w-0">
+              <div
+                className="text-xs"
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontWeight: 500,
+                  fontSize: "var(--text-text-xs)",
+                  lineHeight: "var(--leading-text-xs)",
+                  letterSpacing: "-0.02em",
+                  color: "var(--Neutral-950, #0A0D12)",
+                }}
+              >
+                {cartTotals.itemCount} Items
+              </div>
+              <div
+                className="truncate"
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontWeight: 800,
+                  fontSize: "var(--text-text-sm)",
+                  lineHeight: "var(--leading-text-sm)",
+                  letterSpacing: "-0.02em",
+                  color: "var(--Neutral-950, #0A0D12)",
+                }}
+              >
+                {formatCurrency(cartTotals.totalPrice)}
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.cart)}
+            className="inline-flex h-11 w-40 items-center justify-center rounded-[100px] bg-(--Primary-100,#C12116) px-4"
+            style={{
+              fontFamily: "var(--font-body)",
+              fontWeight: 700,
+              fontSize: "var(--text-text-sm)",
+              lineHeight: "var(--leading-text-sm)",
+              letterSpacing: "-0.02em",
+              color: "var(--Neutral-25, #FDFDFD)",
+              opacity: 1,
+            }}
+            aria-label="Checkout"
+          >
+            Checkout
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

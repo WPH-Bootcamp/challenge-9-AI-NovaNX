@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import profilePhotoUrl from "../../assets/images/profile1.svg";
-import markerPinUrl from "../../assets/images/markerPinMobile.svg";
+import rectangleIconUrl from "../../assets/images/Rectangle.svg";
 import fileUrl from "../../assets/images/fileMobile.svg";
 import logoutUrl from "../../assets/images/arrowCircleBrokenLeftMobile.svg";
 
@@ -17,6 +17,11 @@ type SidebarProfileProps = {
 export function SidebarProfile({ onClose }: SidebarProfileProps) {
   const navigate = useNavigate();
   const userName = getAuthUserName() || "John Doe";
+
+  const goDeliveryAddress = useCallback(() => {
+    onClose();
+    navigate(ROUTES.deliveryAddress);
+  }, [navigate, onClose]);
 
   const goOrders = useCallback(() => {
     onClose();
@@ -76,9 +81,14 @@ export function SidebarProfile({ onClose }: SidebarProfileProps) {
           color: "var(--Neutral-950, #0A0D12)",
         }}
         role="menuitem"
-        onClick={onClose}
+        onClick={goDeliveryAddress}
       >
-        <img src={markerPinUrl} alt="" className="h-5 w-5" aria-hidden="true" />
+        <img
+          src={rectangleIconUrl}
+          alt=""
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
         <span>Delivery Address</span>
       </button>
 
